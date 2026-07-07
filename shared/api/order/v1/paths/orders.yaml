@@ -1,0 +1,47 @@
+post:
+  tags:
+    - Order
+  operationId: createOrder
+  summary: Создать заказ
+  description: >
+    Создаёт новый заказ на основе списка деталей, выбранных пользователем.
+    Сервис получает детали через InventoryService.ListParts, проверяет,
+    что все переданные part_uuids существуют, считает total_price и
+    сохраняет заказ со статусом PENDING_PAYMENT.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/create_order_request.yaml
+  responses:
+    "201":
+      description: Заказ успешно создан, статус PENDING_PAYMENT
+      content:
+        application/json:
+          schema:
+            $ref: ../components/create_order_response.yaml
+    "400":
+      description: Некорректный запрос, например пустой список деталей
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/bad_request_error.yaml
+    "404":
+      description: Одна или несколько деталей из part_uuids не найдены в InventoryService
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/not_found_error.yaml
+    "502":
+      description: Ошибка при обращении к InventoryService
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/bad_gateway_error.yaml
+    "500":
+      description: Внутренняя ошибка сервиса
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/internal_server_error.yaml

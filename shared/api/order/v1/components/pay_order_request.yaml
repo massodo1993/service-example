@@ -1,0 +1,7 @@
+type: object
+description: Данные для оплаты заказа
+required:
+  - payment_method
+properties:
+  payment_method:
+    $ref: ./enums/payment_method.yaml

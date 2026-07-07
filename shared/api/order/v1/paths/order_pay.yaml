@@ -1,0 +1,43 @@
+post:
+  tags:
+    - Order
+  operationId: payOrder
+  summary: Оплатить заказ
+  description: >
+    Проводит оплату ранее созданного заказа. Сервис вызывает
+    PaymentService.PayOrder, передавая user_uuid, order_uuid и
+    payment_method, получает transaction_uuid и переводит заказ
+    в статус PAID.
+  parameters:
+    - $ref: ../params/order_uuid.yaml
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/pay_order_request.yaml
+  responses:
+    "200":
+      description: Заказ успешно оплачен
+      content:
+        application/json:
+          schema:
+            $ref: ../components/pay_order_response.yaml
+    "404":
+      description: Заказ с указанным order_uuid не найден
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/not_found_error.yaml
+    "502":
+      description: Ошибка при обращении к PaymentService
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/bad_gateway_error.yaml
+    "500":
+      description: Внутренняя ошибка сервиса
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/internal_server_error.yaml

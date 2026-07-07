@@ -1,0 +1,9 @@
+type: object
+description: Результат успешной оплаты заказа
+required:
+  - transaction_uuid
+properties:
+  transaction_uuid:
+    type: string
+    format: uuid
+    description: UUID транзакции, полученный от PaymentService

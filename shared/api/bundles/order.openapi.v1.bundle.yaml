@@ -1,0 +1,294 @@
+openapi: 3.0.3
+info:
+  title: Order Service API
+  version: 1.0.0
+  description: |
+    HTTP API сервиса заказов на постройку космических кораблей. Сервис хранит заказы в памяти и оркестрирует их жизненный цикл (создание → оплата → отмена), взаимодействуя с InventoryService (расчёт цены) и PaymentService (проведение оплаты) по gRPC.
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:8080
+    description: Локальный запуск сервиса
+security: []
+tags:
+  - name: Order
+    description: Операции с заказами на постройку космических кораблей
+paths:
+  /api/v1/orders:
+    post:
+      tags:
+        - Order
+      operationId: createOrder
+      summary: Создать заказ
+      description: |
+        Создаёт новый заказ на основе списка деталей, выбранных пользователем. Сервис получает детали через InventoryService.ListParts, проверяет, что все переданные part_uuids существуют, считает total_price и сохраняет заказ со статусом PENDING_PAYMENT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create_order_request'
+      responses:
+        '201':
+          description: Заказ успешно создан, статус PENDING_PAYMENT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create_order_response'
+        '400':
+          description: Некорректный запрос, например пустой список деталей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+        '404':
+          description: Одна или несколько деталей из part_uuids не найдены в InventoryService
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+        '502':
+          description: Ошибка при обращении к InventoryService
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+  /api/v1/orders/{order_uuid}:
+    get:
+      tags:
+        - Order
+      operationId: getOrderByUuid
+      summary: Получить заказ по UUID
+      description: Возвращает полную информацию о заказе по его идентификатору.
+      parameters:
+        - $ref: '#/components/parameters/order_uuid'
+      responses:
+        '200':
+          description: Информация о заказе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/order_dto'
+        '404':
+          description: Заказ с указанным order_uuid не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+  /api/v1/orders/{order_uuid}/pay:
+    post:
+      tags:
+        - Order
+      operationId: payOrder
+      summary: Оплатить заказ
+      description: |
+        Проводит оплату ранее созданного заказа. Сервис вызывает PaymentService.PayOrder, передавая user_uuid, order_uuid и payment_method, получает transaction_uuid и переводит заказ в статус PAID.
+      parameters:
+        - $ref: '#/components/parameters/order_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/pay_order_request'
+      responses:
+        '200':
+          description: Заказ успешно оплачен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/pay_order_response'
+        '404':
+          description: Заказ с указанным order_uuid не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+        '502':
+          description: Ошибка при обращении к PaymentService
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+  /api/v1/orders/{order_uuid}/cancel:
+    post:
+      tags:
+        - Order
+      operationId: cancelOrder
+      summary: Отменить заказ
+      description: |
+        Отменяет заказ, если он ещё не оплачен: статус PENDING_PAYMENT меняется на CANCELLED. Заказ в статусе PAID отменить нельзя.
+      parameters:
+        - $ref: '#/components/parameters/order_uuid'
+      responses:
+        '204':
+          description: Заказ успешно отменён
+        '404':
+          description: Заказ с указанным order_uuid не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+        '409':
+          description: Заказ уже оплачен и не может быть отменён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+components:
+  schemas:
+    create_order_request:
+      type: object
+      description: Данные для создания нового заказа на детали космического корабля
+      required:
+        - user_uuid
+        - part_uuids
+      properties:
+        user_uuid:
+          type: string
+          format: uuid
+          description: UUID пользователя, оформляющего заказ
+        part_uuids:
+          type: array
+          minItems: 1
+          description: Список UUID деталей, которые пользователь хочет заказать
+          items:
+            type: string
+            format: uuid
+    create_order_response:
+      type: object
+      description: Результат успешного создания заказа
+      required:
+        - order_uuid
+        - total_price
+      properties:
+        order_uuid:
+          type: string
+          format: uuid
+          description: UUID созданного заказа
+        total_price:
+          type: number
+          format: double
+          description: Итоговая стоимость заказа, рассчитанная по деталям из InventoryService
+    generic_error:
+      type: object
+      description: Стандартный формат ошибки API
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Машиночитаемый код ошибки, например NOT_FOUND или VALIDATION_ERROR
+        message:
+          type: string
+          description: Человекочитаемое описание ошибки
+    payment_method:
+      type: string
+      description: Способ оплаты заказа
+      enum:
+        - UNKNOWN
+        - CARD
+        - SBP
+        - CREDIT_CARD
+        - INVESTOR_MONEY
+    order_status:
+      type: string
+      description: Статус заказа
+      enum:
+        - PENDING_PAYMENT
+        - PAID
+        - CANCELLED
+    order_dto:
+      type: object
+      description: Полное представление заказа
+      required:
+        - order_uuid
+        - user_uuid
+        - part_uuids
+        - total_price
+        - status
+      properties:
+        order_uuid:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор заказа
+        user_uuid:
+          type: string
+          format: uuid
+          description: UUID пользователя, оформившего заказ
+        part_uuids:
+          type: array
+          description: Список UUID деталей, входящих в заказ
+          items:
+            type: string
+            format: uuid
+        total_price:
+          type: number
+          format: double
+          description: Итоговая стоимость заказа
+        transaction_uuid:
+          type: string
+          format: uuid
+          description: UUID транзакции оплаты; поле отсутствует, пока заказ не оплачен
+        payment_method:
+          description: Способ оплаты; поле отсутствует, пока заказ не оплачен
+          allOf:
+            - $ref: '#/components/schemas/payment_method'
+        status:
+          $ref: '#/components/schemas/order_status'
+    pay_order_request:
+      type: object
+      description: Данные для оплаты заказа
+      required:
+        - payment_method
+      properties:
+        payment_method:
+          $ref: '#/components/schemas/payment_method'
+    pay_order_response:
+      type: object
+      description: Результат успешной оплаты заказа
+      required:
+        - transaction_uuid
+      properties:
+        transaction_uuid:
+          type: string
+          format: uuid
+          description: UUID транзакции, полученный от PaymentService
+  parameters:
+    order_uuid:
+      name: order_uuid
+      in: path
+      required: true
+      description: UUID заказа
+      schema:
+        type: string
+        format: uuid
+x-ogen:
+  target: shared/pkg/openapi/order/v1
+  package: orderV1
+  clean: true

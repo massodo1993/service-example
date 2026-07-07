@@ -1,0 +1,17 @@
+type: object
+description: Данные для создания нового заказа на детали космического корабля
+required:
+  - user_uuid
+  - part_uuids
+properties:
+  user_uuid:
+    type: string
+    format: uuid
+    description: UUID пользователя, оформляющего заказ
+  part_uuids:
+    type: array
+    minItems: 1
+    description: Список UUID деталей, которые пользователь хочет заказать
+    items:
+      type: string
+      format: uuid

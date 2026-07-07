@@ -1,0 +1,31 @@
+post:
+  tags:
+    - Order
+  operationId: cancelOrder
+  summary: Отменить заказ
+  description: >
+    Отменяет заказ, если он ещё не оплачен: статус PENDING_PAYMENT
+    меняется на CANCELLED. Заказ в статусе PAID отменить нельзя.
+  parameters:
+    - $ref: ../params/order_uuid.yaml
+  responses:
+    "204":
+      description: Заказ успешно отменён
+    "404":
+      description: Заказ с указанным order_uuid не найден
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/not_found_error.yaml
+    "409":
+      description: Заказ уже оплачен и не может быть отменён
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/conflict_error.yaml
+    "500":
+      description: Внутренняя ошибка сервиса
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/internal_server_error.yaml
