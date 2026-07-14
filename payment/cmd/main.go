@@ -1,36 +1,25 @@
 package main
 
-import "github.com/google/uuid"
+import (
+	"context"
+	"log"
+	"sync"
 
-type Transaction struct {
-	order_uuid     uuid.UUID
-	user_uuid      uuid.UUID
-	payment_method PaymentMethod
-}
-
-type PaymentMethod int
-
-const (
-	PM_UNKNOWN PaymentMethod = iota
-	PM_CARD
-	PM_SBP
-	PM_CREDIT_CARD
-	PM_INVESTOR_MONEY
+	"github.com/google/uuid"
+	paymentv1 "github.com/massodo1993/service-example/shared/pkg/proto/payment/v1"
 )
 
-func (pm PaymentMethod) String() string {
-	switch pm {
-	case PM_CARD:
-		return "Банковская карта"
-	case PM_SBP:
-		return "SBP"
-	case PM_CREDIT_CARD:
-		return "Система быстрых платежей"
-	case PM_INVESTOR_MONEY:
-		return "Кредитная карта"
-	default:
-		return "Неизвестный способ"
-	}
+type payemntService struct {
+	paymentv1.UnimplementedPayemntServiceServer
+
+	mu       sync.Mutex
+	payments map[string]*paymentv1.PaymentMethod
+}
+
+func (ps *payemntService) PayOrder(_ context.Context, request *paymentv1.PayOrderRequest) (*paymentv1.PayOrderResponse, error) {
+	uuid := uuid.New()
+	log.Printf("Оплата прошла успешно, transaction_uuid: %s", uuid)
+	return &paymentv1.PayOrderResponse{TransactionUuid: uuid.String()}, nil
 }
 
 func main() {
