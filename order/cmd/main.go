@@ -17,9 +17,16 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	orderV1 "github.com/massodo1993/service-example/shared/pkg/openapi/order/v1"
+	inventoryv1 "github.com/massodo1993/service-example/shared/pkg/proto/inventory/v1"
+	paymentv1 "github.com/massodo1993/service-example/shared/pkg/proto/payment/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type PaymentMethod int
+
+const inventoryServicePort = "localhost:50051"
+const payemntSerivcePort = "localhost:50053"
 
 const (
 	PM_UNKNOWN PaymentMethod = iota
@@ -99,12 +106,14 @@ type Order struct {
 	status          Status
 }
 
-func NewOrder(id uuid.UUID, parts []uuid.UUID, status Status) *Order {
+func NewOrder(id uuid.UUID, parts []uuid.UUID, status Status, price float64) *Order {
 	return &Order{
-		orderUUID:  uuid.New(),
-		userUUID:   id,
-		partsUUIDs: parts,
-		status:     status,
+		orderUUID:     uuid.New(),
+		userUUID:      id,
+		partsUUIDs:    parts,
+		status:        status,
+		totalPrice:    price,
+		paymentMethod: new(PaymentMethod),
 	}
 }
 
@@ -139,7 +148,9 @@ func (s *OrderStorage) SetOrder(order *Order) {
 }
 
 type OrderHandler struct {
-	storage *OrderStorage
+	storage         *OrderStorage
+	inventoryClient inventoryv1.InventoryServiceClient
+	payemntClient   paymentv1.PayemntServiceClient
 }
 
 func NewOrderHandler(storage *OrderStorage) *OrderHandler {
@@ -167,8 +178,26 @@ func (h *OrderHandler) GetOrderByUuid(_ context.Context, params orderV1.GetOrder
 }
 
 func (h *OrderHandler) CreateOrder(_ context.Context, request *orderV1.CreateOrderRequest) (orderV1.CreateOrderRes, error) {
-	//TO-DO проверка деталей и посчитать сумму
-	order := NewOrder(request.GetUserUUID(), request.GetPartUuids(), S_PENDING_PAYMENT)
+	//проверка деталей и посчитать сумму
+	var price float64
+	actualPartsUUIDs, err := h.getActualIventoryUUIDs()
+	if err != nil {
+		return &orderV1.CreateOrderInternalServerError{}, err
+	}
+
+	for _, value := range request.GetPartUuids() {
+		part, found := actualPartsUUIDs[value.String()]
+
+		if !found {
+			return &orderV1.CreateOrderBadRequest{
+				Code:    "BAD_REQUEST",
+				Message: fmt.Sprintf("Part with uuid %s dosent exist", value),
+			}, nil
+		}
+		price += part.GetPrice()
+	}
+
+	order := NewOrder(request.GetUserUUID(), request.GetPartUuids(), S_PENDING_PAYMENT, price)
 	h.storage.SetOrder(order)
 	return &orderV1.CreateOrderResponse{
 		OrderUUID:  order.orderUUID,
@@ -184,11 +213,16 @@ func (h *OrderHandler) PayOrder(_ context.Context, request *orderV1.PayOrderRequ
 			Message: fmt.Sprintf("Order with %s not found", params.OrderUUID),
 		}, nil
 	}
-	//TO-DO оплата
+
 	order.paymentMethod.fromString(string(request.PaymentMethod))
+	transaction, err := h.PayOrderRequest(order.orderUUID.String(), order.userUUID.String(), int(*order.paymentMethod))
+	if err != nil {
+		return &orderV1.PayOrderInternalServerError{}, nil
+	}
+
 	order.status = S_PAID
 	return &orderV1.PayOrderResponse{
-		TransactionUUID: uuid.New(), //TO-do поменяй на нормальный uuid
+		TransactionUUID: uuid.MustParse(transaction),
 	}, nil
 }
 
@@ -209,15 +243,91 @@ func (h *OrderHandler) CancelOrder(_ context.Context, params orderV1.CancelOrder
 	}
 
 	if order.status == S_PENDING_PAYMENT {
+		order.status = S_CANCELLED
 		return &orderV1.CancelOrderNoContent{}, nil
 	}
 
 	return &orderV1.CancelOrderInternalServerError{}, nil
 }
 
+func (h *OrderHandler) getActualIventoryUUIDs() (map[string]*inventoryv1.Part, error) {
+	ctx := context.Background()
+	result := make(map[string]*inventoryv1.Part, 10)
+	response, err := h.inventoryClient.ListParts(ctx, &inventoryv1.ListPartsRequest{})
+
+	if err != nil {
+		return nil, err
+	}
+	for _, value := range response.GetParts() {
+		result[value.Uuid] = value
+	}
+	return result, nil
+}
+
+func (h *OrderHandler) PayOrderRequest(user string, order string, paymentMethod int) (string, error) {
+	ctx := context.Background()
+	response, err := h.payemntClient.PayOrder(ctx, &paymentv1.PayOrderRequest{
+		OrderUuid:     order,
+		UserUuid:      user,
+		PaymentMethod: paymentv1.PaymentMethod(paymentMethod),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return response.GetTransactionUuid(), nil
+}
+
+func (h *OrderHandler) initInventoryClient() (func() error, error) {
+	inventCon, err := grpc.NewClient(
+		inventoryServicePort,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Printf("fail to connect to inventory service")
+		return nil, err
+	}
+
+	h.inventoryClient = inventoryv1.NewInventoryServiceClient(inventCon)
+	return inventCon.Close, nil
+}
+
+func (h *OrderHandler) initPaymentClient() (func() error, error) {
+	payemntCon, err := grpc.NewClient(
+		payemntSerivcePort,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Printf("fail to connect to payemnt service")
+		return nil, err
+	}
+	h.payemntClient = paymentv1.NewPayemntServiceClient(payemntCon)
+	return payemntCon.Close, nil
+}
+
 func main() {
 	storage := NewOrderStorage()
 	orderHandler := NewOrderHandler(storage)
+
+	inventClose, err := orderHandler.initInventoryClient()
+	if err != nil {
+		return
+	}
+	defer func() {
+		if cerr := inventClose(); cerr != nil {
+			log.Printf("fill to close connect: %v", cerr)
+		}
+	}()
+
+	payemntClose, err := orderHandler.initPaymentClient()
+	if err != nil {
+		return
+	}
+	defer func() {
+		if cerr := payemntClose(); cerr != nil {
+			log.Printf("fill to close connect: %v", cerr)
+		}
+	}()
 
 	orderServer, err := orderV1.NewServer(orderHandler)
 	if err != nil {
@@ -231,7 +341,7 @@ func main() {
 
 	router.Mount("/", orderServer)
 	server := &http.Server{
-		Addr:              net.JoinHostPort("localhost", "8001"),
+		Addr:              net.JoinHostPort("localhost", "8080"),
 		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
