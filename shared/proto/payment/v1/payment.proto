@@ -3,7 +3,7 @@ syntax = "proto3";
 package payment.v1;
 option go_package = "github.com/massodo1993/service-example/shared/pkg/proto/payment/v1;paymentv1";
 
-service PayemntService {
+service PaymentService {
     rpc PayOrder(PayOrderRequest) returns (PayOrderResponse);
 }
 

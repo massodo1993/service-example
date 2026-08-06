@@ -19,14 +19,17 @@ import (
 
 	orderAPI "github.com/massodo1993/service-example/order/internal/api/order/v1"
 	inventoryClient "github.com/massodo1993/service-example/order/internal/client/grpc/inventory"
+	payemntCleint "github.com/massodo1993/service-example/order/internal/client/grpc/payment"
 	orderRepository "github.com/massodo1993/service-example/order/internal/repository/order"
 	orderService "github.com/massodo1993/service-example/order/internal/service/order"
 	orderV1 "github.com/massodo1993/service-example/shared/pkg/openapi/order/v1"
 	inventoryV1 "github.com/massodo1993/service-example/shared/pkg/proto/inventory/v1"
+	paymentV1 "github.com/massodo1993/service-example/shared/pkg/proto/payment/v1"
 )
 
 const (
 	inventoryServiceAddr = "localhost:50051"
+	paymentServiceAddr   = "localhost:50053"
 	orderHost            = "localhost"
 	orderPort            = 8080
 
@@ -50,9 +53,24 @@ func main() {
 		}
 	}()
 
+	paymentConn, err := grpc.NewClient(
+		paymentServiceAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Printf("не удалось подключиться к payment: %v\n", err)
+		return
+	}
+	defer func() {
+		if cerr := paymentConn.Close(); cerr != nil {
+			log.Printf("не удалось закрыть соединение с payment: %v\n", cerr)
+		}
+	}()
+
 	repo := orderRepository.NewRepository()
-	client := inventoryClient.NewClient(inventoryV1.NewInventoryServiceClient(inventoryConn))
-	service := orderService.NewService(repo, client)
+	inventoryClient := inventoryClient.NewClient(inventoryV1.NewInventoryServiceClient(inventoryConn))
+	paymentClient := payemntCleint.NewClient(paymentV1.NewPaymentServiceClient(paymentConn))
+	service := orderService.NewService(repo, inventoryClient, paymentClient)
 
 	orderServer, err := orderV1.NewServer(orderAPI.NewApi(service))
 	if err != nil {

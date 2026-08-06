@@ -11,3 +11,7 @@ import (
 type InventoryClient interface {
 	ListParts(ctx context.Context, partsUUIDs []uuid.UUID) ([]model.Part, error)
 }
+
+type PaymentClient interface {
+	PayOrder(ctx context.Context, orderUuid uuid.UUID, userUuid uuid.UUID, pm model.PaymentMethod) (uuid.UUID, error)
+}

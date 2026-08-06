@@ -11,11 +11,13 @@ var _ def.OrderService = (*service)(nil)
 type service struct {
 	orderRepository repository.OrderRepository
 	inventoryClient client.InventoryClient
+	paymentClient   client.PaymentClient
 }
 
-func NewService(orderRepository repository.OrderRepository, initInventoryClient client.InventoryClient) *service {
+func NewService(orderRepository repository.OrderRepository, initInventoryClient client.InventoryClient, initPayemntClient client.PaymentClient) *service {
 	return &service{
 		orderRepository: orderRepository,
 		inventoryClient: initInventoryClient,
+		paymentClient:   initPayemntClient,
 	}
 }

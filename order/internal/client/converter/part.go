@@ -10,7 +10,6 @@ import (
 	inventoryV1 "github.com/massodo1993/service-example/shared/pkg/proto/inventory/v1"
 )
 
-// ToModelPart конвертирует деталь из ответа inventory в доменную модель.
 func ToModelPart(part *inventoryV1.Part) (model.Part, error) {
 	if part == nil {
 		return model.Part{}, fmt.Errorf("inventory вернул пустую деталь")
@@ -48,7 +47,6 @@ func ToModelPart(part *inventoryV1.Part) (model.Part, error) {
 	}, nil
 }
 
-// ToModelParts конвертирует список деталей, прерываясь на первой некорректной.
 func ToModelParts(parts []*inventoryV1.Part) ([]model.Part, error) {
 	result := make([]model.Part, 0, len(parts))
 	for _, part := range parts {
