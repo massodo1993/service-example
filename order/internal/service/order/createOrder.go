@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	"github.com/massodo1993/service-example/order/internal/model"
 )
 

@@ -5,10 +5,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	svcModel "github.com/massodo1993/service-example/inventory/internal/model"
 	inventoryv1 "github.com/massodo1993/service-example/shared/pkg/proto/inventory/v1"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func ToDomainPart(part *inventoryv1.Part) (svcModel.Part, error) {
@@ -52,7 +52,7 @@ func ToProtoPart(part svcModel.Part) *inventoryv1.Part {
 		Description:   part.Description,
 		Price:         part.Price,
 		StockQuantity: int64(part.StockQuantity),
-		Category:      inventoryv1.CategoryType(part.Category),
+		Category:      inventoryv1.CategoryType(part.Category), //nolint:gosec // enum с фиксированным набором значений, переполнение невозможно
 		Dimensions:    toProtoDimensions(part.Dimensions),
 		Manufacturer:  toProtoManufacturer(part.Manufacturer),
 		Tags:          part.Tags,

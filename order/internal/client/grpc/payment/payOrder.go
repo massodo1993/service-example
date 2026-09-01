@@ -12,7 +12,7 @@ import (
 )
 
 // PayOrder проводит оплату заказа через payment и возвращает UUID транзакции.
-func (c *client) PayOrder(ctx context.Context, orderUuid uuid.UUID, userUuid uuid.UUID, pm model.PaymentMethod) (uuid.UUID, error) {
+func (c *client) PayOrder(ctx context.Context, orderUuid, userUuid uuid.UUID, pm model.PaymentMethod) (uuid.UUID, error) {
 	response, err := c.generatedClient.PayOrder(ctx, &paymentV1.PayOrderRequest{
 		OrderUuid:     orderUuid.String(),
 		UserUuid:      userUuid.String(),

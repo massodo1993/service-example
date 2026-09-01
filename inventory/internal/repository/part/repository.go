@@ -28,6 +28,9 @@ func NewRepository() *repository {
 	return r
 }
 
+// mockParts наполняет in-memory хранилище демо-данными.
+//
+//nolint:gosec // G404: math/rand достаточно для генерации тестовых деталей, крипто-стойкость не нужна
 func (r *repository) mockParts() {
 	names := []string{
 		"Двигатель Р7", "Крыло L-100", "Иллюминатор X1", "Топливный бак FT-9",

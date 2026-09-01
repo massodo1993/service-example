@@ -62,6 +62,7 @@ func ToDomainPart(part repoModel.Part) svcModel.Part {
 		DeletedAt:     part.DeletedAt,
 	}
 }
+
 func ToDomainParts(parts []repoModel.Part) []svcModel.Part {
 	domainParts := make([]svcModel.Part, 0, len(parts))
 	for _, value := range parts {

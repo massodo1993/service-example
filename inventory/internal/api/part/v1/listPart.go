@@ -9,7 +9,6 @@ import (
 
 func (a *api) ListParts(ctx context.Context, request *inventoryv1.ListPartsRequest) (*inventoryv1.ListPartsResponse, error) {
 	parts, err := a.partService.ListParts(ctx, converter.ToDomainFilter(request.Filter))
-
 	if err != nil {
 		return nil, err
 	}

@@ -8,13 +8,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+
 	inventoryv1API "github.com/massodo1993/service-example/inventory/internal/api/part/v1"
 	inventroyRepository "github.com/massodo1993/service-example/inventory/internal/repository/part"
 	inventoryService "github.com/massodo1993/service-example/inventory/internal/service/part"
 	inventoryv1 "github.com/massodo1993/service-example/shared/pkg/proto/inventory/v1"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 const inventoryGRPCPort = 50051

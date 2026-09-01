@@ -7,7 +7,7 @@ import (
 	repoModel "github.com/massodo1993/service-example/order/internal/repository/model"
 )
 
-func (r *repository) PayOrder(_ context.Context, orderUuid string, transactionUuid string, paymentMethod model.PaymentMethod) error {
+func (r *repository) PayOrder(_ context.Context, orderUuid, transactionUuid string, paymentMethod model.PaymentMethod) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	order, has := r.data[orderUuid]

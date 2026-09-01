@@ -1,0 +1,19 @@
+with-expecter: true
+boilerplate-file: ".mockery_boilerplate_text.txt"
+dir: "{{.InterfaceDir}}/mocks"
+filename: "mock_{{.InterfaceNameSnake}}.go"
+outpkg: "mocks"
+mockname: "{{.InterfaceName}}"
+resolve-type-alias: False
+issue-845-fix: True
+
+packages:
+  github.com/massodo1993/service-example/order/internal/repository:
+    config:
+      include-regex: ".*Repository"
+  github.com/massodo1993/service-example/order/internal/client:
+    config:
+      include-regex: ".*Client"
+  github.com/massodo1993/service-example/inventory/internal/repository:
+    config:
+      include-regex: ".*Repository"

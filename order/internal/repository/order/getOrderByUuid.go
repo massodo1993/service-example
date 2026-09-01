@@ -15,7 +15,6 @@ func (r *repository) GetOrderByUuid(_ context.Context, orderUuid string) (model.
 		return model.Order{}, model.ErrOrderNotFound
 	}
 	modelOrder, err := repoConverter.ToModelOrder(*order)
-
 	if err != nil {
 		return model.Order{}, err
 	}

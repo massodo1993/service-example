@@ -31,7 +31,7 @@ const (
 	inventoryServiceAddr = "localhost:50051"
 	paymentServiceAddr   = "localhost:50053"
 	orderHost            = "localhost"
-	orderPort            = 8080
+	orderPort            = 8083
 
 	shutdownTimeout   = 10 * time.Second
 	readHeaderTimeout = 5 * time.Second

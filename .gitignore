@@ -7,3 +7,5 @@ package-lock.json
 /node_modules
 /week2
 /graphify-out
+/coverage
+.DS_Store
