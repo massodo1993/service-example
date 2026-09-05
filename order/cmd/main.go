@@ -14,12 +14,16 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	orderAPI "github.com/massodo1993/service-example/order/internal/api/order/v1"
 	inventoryClient "github.com/massodo1993/service-example/order/internal/client/grpc/inventory"
 	payemntCleint "github.com/massodo1993/service-example/order/internal/client/grpc/payment"
+	"github.com/massodo1993/service-example/order/internal/migrator"
 	orderRepository "github.com/massodo1993/service-example/order/internal/repository/order"
 	orderService "github.com/massodo1993/service-example/order/internal/service/order"
 	orderV1 "github.com/massodo1993/service-example/shared/pkg/openapi/order/v1"
@@ -39,6 +43,34 @@ const (
 )
 
 func main() {
+	if err := godotenv.Load(".env"); err != nil {
+		log.Printf("не удалось загрузить .env: %v\n", err)
+	}
+
+	ctx := context.Background()
+
+	pool, err := pgxpool.New(ctx, os.Getenv("DB_URI"))
+	if err != nil {
+		log.Printf("не удалось подключиться к базе данных: %v\n", err)
+		return
+	}
+	defer pool.Close()
+
+	err = pool.Ping(ctx)
+	if err != nil {
+		log.Printf("База данных недоступна: %v\n", err)
+		return
+	}
+
+	migrationsDir := os.Getenv("MIGRATIONS_DIR")
+	migratorRunner := migrator.NewMigrator(stdlib.OpenDB(*pool.Config().ConnConfig), migrationsDir)
+
+	err = migratorRunner.Up()
+	if err != nil {
+		log.Printf("Ошибка миграции базы данных: %v\n", err)
+		return
+	}
+
 	inventoryConn, err := grpc.NewClient(
 		inventoryServiceAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -67,7 +99,7 @@ func main() {
 		}
 	}()
 
-	repo := orderRepository.NewRepository()
+	repo := orderRepository.NewRepository(pool)
 	inventoryClient := inventoryClient.NewClient(inventoryV1.NewInventoryServiceClient(inventoryConn))
 	paymentClient := payemntCleint.NewClient(paymentV1.NewPaymentServiceClient(paymentConn))
 	service := orderService.NewService(repo, inventoryClient, paymentClient)

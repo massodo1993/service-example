@@ -2,19 +2,32 @@ package part
 
 import (
 	"context"
+	"errors"
 
+	"github.com/google/uuid"
 	"github.com/massodo1993/service-example/inventory/internal/model"
 	repoConverter "github.com/massodo1993/service-example/inventory/internal/repository/converter"
+	repoModel "github.com/massodo1993/service-example/inventory/internal/repository/model"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func (r *repository) GetPart(_ context.Context, uuid string) (model.Part, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	repoPart, ok := r.data[uuid]
-	if !ok {
+func (r *repository) GetPart(ctx context.Context, partUUID string) (model.Part, error) {
+	parsedUUID, err := uuid.Parse(partUUID)
+	if err != nil {
 		return model.Part{}, model.ErrPartNotFound
 	}
 
-	return repoConverter.ToDomainPart(repoPart), nil
+	var part repoModel.Part
+
+	err = r.mongo.FindOne(ctx, bson.M{"part_uuid": parsedUUID}).Decode(&part)
+
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return model.Part{}, model.ErrPartNotFound
+	}
+	if err != nil {
+		return model.Part{}, err
+	}
+
+	return repoConverter.ToDomainPart(part), nil
 }

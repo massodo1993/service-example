@@ -8,10 +8,14 @@ import (
 )
 
 func (r *repository) CreateOrder(ctx context.Context, order model.Order) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	repoOrder := converter.ToRepoOrder(order)
-	r.data[order.OrderUUID.String()] = &repoOrder
+	_, err := r.connect.Exec(ctx,
+		"INSERT INTO orders (order_uuid, user_uuid, parts_uuids, total_price, status) VALUES ($1, $2, $3, $4, $5)",
+		repoOrder.OrderUUID, repoOrder.UserUUID, repoOrder.PartsUUIDs, repoOrder.TotalPrice, repoOrder.Status)
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

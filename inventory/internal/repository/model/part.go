@@ -37,17 +37,17 @@ type Value struct {
 }
 
 type Part struct {
-	Uuid          uuid.UUID
-	Name          string
-	Description   string
-	Price         float64
-	StockQuantity int
-	CategoryType  CategoryType
-	Dimensions    *Dimensions
-	Manufacturer  *Manufacturer
-	Tags          []string
-	Metadata      map[string]Value
-	CreatedAt     time.Time
-	UpdatedAt     *time.Time
-	DeletedAt     *time.Time
+	Uuid          uuid.UUID        `bson:"part_uuid"`
+	Name          string           `bson:"name"`
+	Description   string           `bson:"description"`
+	Price         float64          `bson:"price"`
+	StockQuantity int              `bson:"stock_quantity"`
+	CategoryType  CategoryType     `bson:"category_type"`
+	Dimensions    *Dimensions      `bson:"dimensions"`
+	Manufacturer  *Manufacturer    `bson:"manufacturer"`
+	Tags          []string         `bson:"tags"`
+	Metadata      map[string]Value `bson:"metadata"`
+	CreatedAt     time.Time        `bson:"created_at"`
+	UpdatedAt     *time.Time       `bson:"updated_at"`
+	DeletedAt     *time.Time       `bson:"deleted_at"`
 }

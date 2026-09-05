@@ -2,64 +2,57 @@ package part
 
 import (
 	"context"
-	"maps"
-	"slices"
 
+	"github.com/google/uuid"
 	"github.com/massodo1993/service-example/inventory/internal/model"
 	repoConverter "github.com/massodo1993/service-example/inventory/internal/repository/converter"
 	repoModel "github.com/massodo1993/service-example/inventory/internal/repository/model"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
-func (r *repository) ListParts(_ context.Context, filters model.PartsFilter) ([]model.Part, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+func (r *repository) ListParts(ctx context.Context, filters model.PartsFilter) ([]model.Part, error) {
+	filter := filterToBson(filters)
 
-	repoFilter := repoConverter.ToRepoFilter(filters)
-	result := maps.Clone(r.data)
-	if filters.IsEmpty() {
-		parts := mapToSlice(result)
-		return parts, nil
+	collect, err := r.mongo.Find(ctx, filter)
+	if err != nil {
+		return []model.Part{}, err
 	}
+	defer collect.Close(ctx)
 
-	if len(filters.UUIDs) > 0 {
-		maps.DeleteFunc(result, func(uuid string, _ repoModel.Part) bool {
-			return !slices.Contains(repoFilter.UUIDs, uuid)
-		})
-	}
-	if len(filters.Names) > 0 {
-		maps.DeleteFunc(result, func(_ string, value repoModel.Part) bool {
-			return !slices.Contains(repoFilter.Names, value.Name)
-		})
-	}
-	if len(filters.Categories) > 0 {
-		maps.DeleteFunc(result, func(_ string, value repoModel.Part) bool {
-			return !slices.Contains(repoFilter.Categories, value.CategoryType)
-		})
-	}
-	if len(filters.ManufacturerCountries) > 0 {
-		maps.DeleteFunc(result, func(_ string, value repoModel.Part) bool {
-			return !slices.Contains(repoFilter.ManufacturerCountries, value.Manufacturer.Country)
-		})
-	}
-	if len(filters.Tags) > 0 {
-		maps.DeleteFunc(result, func(_ string, value repoModel.Part) bool {
-			for _, tag := range value.Tags {
-				if slices.Contains(filters.Tags, tag) {
-					return false
-				}
-			}
-			return true
-		})
+	var parts []repoModel.Part
+	if err = collect.All(ctx, &parts); err != nil {
+		return []model.Part{}, err
 	}
 
-	parts := mapToSlice(result)
-	return parts, nil
+	return repoConverter.ToDomainParts(parts), nil
 }
 
-func mapToSlice(m map[string]repoModel.Part) []model.Part {
-	result := make([]model.Part, 0, len(m))
-	for _, v := range m {
-		result = append(result, repoConverter.ToDomainPart(v))
+func filterToBson(filter model.PartsFilter) bson.M {
+	m := bson.M{}
+
+	if len(filter.UUIDs) > 0 {
+		parsedUUIDs := make([]uuid.UUID, 0, len(filter.UUIDs))
+		for _, u := range filter.UUIDs {
+			parsed, err := uuid.Parse(u)
+			if err != nil {
+				continue
+			}
+			parsedUUIDs = append(parsedUUIDs, parsed)
+		}
+		m["part_uuid"] = bson.M{"$in": parsedUUIDs}
 	}
-	return result
+	if len(filter.Names) > 0 {
+		m["name"] = bson.M{"$in": filter.Names}
+	}
+	if len(filter.Categories) > 0 {
+		m["category_type"] = bson.M{"$in": filter.Categories}
+	}
+	if len(filter.ManufacturerCountries) > 0 {
+		m["manufacturer.country"] = bson.M{"$in": filter.ManufacturerCountries}
+	}
+	if len(filter.Tags) > 0 {
+		m["tags"] = bson.M{"$in": filter.Tags}
+	}
+
+	return m
 }

@@ -52,11 +52,11 @@ func (pm PaymentMethod) String() string {
 }
 
 type Order struct {
-	OrderUUID       string
-	UserUUID        string
-	PartsUUIDs      []string
-	TotalPrice      float64
-	TransactionUUID *string
-	PaymentMethod   *PaymentMethod
-	Status          Status
+	OrderUUID       string         `db:"order_uuid"`
+	UserUUID        string         `db:"user_uuid"`
+	PartsUUIDs      []string       `db:"parts_uuids"`
+	TotalPrice      float64        `db:"total_price"`
+	TransactionUUID *string        `db:"transaction_uuid"`
+	PaymentMethod   *PaymentMethod `db:"payment_method"`
+	Status          Status         `db:"status"`
 }
