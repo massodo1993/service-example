@@ -8,12 +8,19 @@ import (
 
 var _ def.PartRepository = (*repository)(nil)
 
+const (
+	databaseName   = "inventory-service"
+	collectionName = "parts"
+)
+
 type repository struct {
-	mongo *mongo.Collection
+	client *mongo.Client
+	mongo  *mongo.Collection
 }
 
-func NewRepository(con *mongo.Collection) *repository {
+func NewRepository(client *mongo.Client) *repository {
 	return &repository{
-		mongo: con,
+		client: client,
+		mongo:  client.Database(databaseName).Collection(collectionName),
 	}
 }

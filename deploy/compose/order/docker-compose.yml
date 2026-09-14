@@ -9,9 +9,9 @@ services: # Раздел, описывающий контейнеры, кото�
     # Устанавливаем уникальное имя контейнера, чтобы было удобно обращаться к нему в CLI и при отладке
 
     environment: # Переменные окружения, используемые при запуске контейнера
-      POSTGRES_DB: order-service # Имя базы данных, которая будет создана при запуске
-      POSTGRES_USER: order-service-user # Имя пользователя, создаваемого в базе
-      POSTGRES_PASSWORD: order-service-password # Пароль для указанного пользователя
+      POSTGRES_DB: ${POSTGRES_DB} # Имя базы данных, которая будет создана при запуске
+      POSTGRES_USER: ${POSTGRES_USER} # Имя пользователя, создаваемого в базе
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # Пароль для указанного пользователя
 
     volumes:
       - postgres_order_data:/var/lib/postgresql/data
@@ -19,12 +19,12 @@ services: # Раздел, описывающий контейнеры, кото�
       # Он сохраняет данные между перезапусками контейнера
 
     ports:
-      - "5435:5432"
-      # Пробрасываем внутренний порт PostgreSQL (5432) на порт хоста
+      - "${EXTERNAL_POSTGRES_PORT}:5432"
+      # Пробрасываем внутренний порт PostgreSQL (5432) на порт хоста из .env
       # Это нужно, чтобы другие сервисы или инструменты могли подключиться к базе
 
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U order-service-user -d order-service" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       # Настраиваем проверку готовности контейнера — pg_isready проверяет, принимает ли база подключения
       interval: 10s  # Интервал между проверками — каждые 10 секунд
       timeout: 5s    # Время ожидания ответа от проверки

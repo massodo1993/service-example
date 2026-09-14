@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/massodo1993/service-example/inventory/internal/model"
 	repoConverter "github.com/massodo1993/service-example/inventory/internal/repository/converter"
 	repoModel "github.com/massodo1993/service-example/inventory/internal/repository/model"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (r *repository) ListParts(ctx context.Context, filters model.PartsFilter) ([]model.Part, error) {

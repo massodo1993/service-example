@@ -5,11 +5,12 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+
 	"github.com/massodo1993/service-example/inventory/internal/model"
 	repoConverter "github.com/massodo1993/service-example/inventory/internal/repository/converter"
 	repoModel "github.com/massodo1993/service-example/inventory/internal/repository/model"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func (r *repository) GetPart(ctx context.Context, partUUID string) (model.Part, error) {

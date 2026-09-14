@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+
 	"github.com/massodo1993/service-example/order/internal/model"
 	repoModel "github.com/massodo1993/service-example/order/internal/repository/model"
 )

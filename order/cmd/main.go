@@ -3,12 +3,11 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -16,13 +15,13 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	orderAPI "github.com/massodo1993/service-example/order/internal/api/order/v1"
 	inventoryClient "github.com/massodo1993/service-example/order/internal/client/grpc/inventory"
 	payemntCleint "github.com/massodo1993/service-example/order/internal/client/grpc/payment"
+	"github.com/massodo1993/service-example/order/internal/config"
 	"github.com/massodo1993/service-example/order/internal/migrator"
 	orderRepository "github.com/massodo1993/service-example/order/internal/repository/order"
 	orderService "github.com/massodo1993/service-example/order/internal/service/order"
@@ -32,24 +31,20 @@ import (
 )
 
 const (
-	inventoryServiceAddr = "localhost:50051"
-	paymentServiceAddr   = "localhost:50053"
-	orderHost            = "localhost"
-	orderPort            = 8083
-
-	shutdownTimeout   = 10 * time.Second
-	readHeaderTimeout = 5 * time.Second
-	handlerTimeout    = 30 * time.Second
+	shutdownTimeout = 10 * time.Second
+	handlerTimeout  = 30 * time.Second
 )
 
+const configPath = "./deploy/compose/order/.env"
+
 func main() {
-	if err := godotenv.Load(".env"); err != nil {
-		log.Printf("не удалось загрузить .env: %v\n", err)
+	if err := config.Load(configPath); err != nil {
+		panic(fmt.Errorf("не удалось загрузить конфиг: %w", err))
 	}
 
 	ctx := context.Background()
 
-	pool, err := pgxpool.New(ctx, os.Getenv("DB_URI"))
+	pool, err := pgxpool.New(ctx, config.AppConfig().Postgres.URI())
 	if err != nil {
 		log.Printf("не удалось подключиться к базе данных: %v\n", err)
 		return
@@ -58,21 +53,21 @@ func main() {
 
 	err = pool.Ping(ctx)
 	if err != nil {
-		log.Printf("База данных недоступна: %v\n", err)
+		log.Printf("база данных недоступна: %v\n", err)
 		return
 	}
 
-	migrationsDir := os.Getenv("MIGRATIONS_DIR")
+	migrationsDir := config.AppConfig().Postgres.MigrationsDir()
 	migratorRunner := migrator.NewMigrator(stdlib.OpenDB(*pool.Config().ConnConfig), migrationsDir)
 
 	err = migratorRunner.Up()
 	if err != nil {
-		log.Printf("Ошибка миграции базы данных: %v\n", err)
+		log.Printf("ошибка миграции базы данных: %v\n", err)
 		return
 	}
 
 	inventoryConn, err := grpc.NewClient(
-		inventoryServiceAddr,
+		config.AppConfig().InventoryGRPC.Address(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -86,7 +81,7 @@ func main() {
 	}()
 
 	paymentConn, err := grpc.NewClient(
-		paymentServiceAddr,
+		config.AppConfig().PaymentGRPC.Address(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -117,13 +112,13 @@ func main() {
 	router.Mount("/", orderServer)
 
 	server := &http.Server{
-		Addr:              net.JoinHostPort(orderHost, strconv.Itoa(orderPort)),
+		Addr:              config.AppConfig().OrderHTTP.Address(),
 		Handler:           router,
-		ReadHeaderTimeout: readHeaderTimeout,
+		ReadHeaderTimeout: config.AppConfig().OrderHTTP.ReadTimeout(),
 	}
 
 	go func() {
-		log.Printf("http order server listen on %d\n", orderPort)
+		log.Printf("http order server listen on %s\n", config.AppConfig().OrderHTTP.Address())
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("сервер остановлен с ошибкой: %v\n", err)
 		}
