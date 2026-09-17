@@ -18,7 +18,7 @@ var testRepo *repository
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 
-	pool, err := pgxpool.New(ctx, "postgres://order-service-user:order-service-password@localhost:5435/order-service")
+	pool, err := pgxpool.New(ctx, "postgres://order_user:order_password@localhost:5435/order?sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}

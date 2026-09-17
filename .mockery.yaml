@@ -17,3 +17,12 @@ packages:
   github.com/massodo1993/service-example/inventory/internal/repository:
     config:
       include-regex: ".*Repository"
+  github.com/massodo1993/service-example/order/internal/config:
+    config:
+      include-regex: ".*Config"
+  github.com/massodo1993/service-example/inventory/internal/config:
+    config:
+      include-regex: ".*Config"
+  github.com/massodo1993/service-example/payment/internal/config:
+    config:
+      include-regex: ".*Config"

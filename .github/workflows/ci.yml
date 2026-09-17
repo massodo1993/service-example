@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  GO_VERSION: '1.26'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: go-task/setup-task@v0.0.21
+
+      - run: task lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: go-task/setup-task@v0.0.21
+
+      - run: task test
+
+  test-integration:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7.0.5
+        ports:
+          - 27017:27017
+        env:
+          MONGO_INITDB_ROOT_USERNAME: inventory_admin
+          MONGO_INITDB_ROOT_PASSWORD: inventory_secret
+      postgres:
+        image: postgres:17.0-alpine3.20
+        ports:
+          - 5435:5432
+        env:
+          POSTGRES_USER: order_user
+          POSTGRES_PASSWORD: order_password
+          POSTGRES_DB: order
+        options: >-
+          --health-cmd "pg_isready -U order_user -d order"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: go-task/setup-task@v0.0.21
+
+      - name: Apply order migrations
+        run: go run github.com/pressly/goose/v3/cmd/goose@latest postgres "postgres://order_user:order_password@localhost:5435/order?sslmode=disable" -dir order/migrations up
+
+      - run: task test-integration

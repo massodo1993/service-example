@@ -22,7 +22,7 @@ var testRepo *repository
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://inventory-service-user:inventory-service-password@localhost:27017/inventory-service?authSource=admin"))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://inventory_admin:inventory_secret@localhost:27017/inventory?authSource=admin"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 		}
 	}()
 
-	collection := client.Database("inventory-service").Collection("parts")
+	collection := client.Database("inventory").Collection("parts")
 	testRepo = &repository{mongo: collection}
 
 	os.Exit(m.Run())
