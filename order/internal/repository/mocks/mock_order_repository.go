@@ -71,6 +71,53 @@ func (_c *OrderRepository_CancelOrder_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// CompleteOrder provides a mock function with given fields: ctx, orderUuid
+func (_m *OrderRepository) CompleteOrder(ctx context.Context, orderUuid string) error {
+	ret := _m.Called(ctx, orderUuid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CompleteOrder")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, orderUuid)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// OrderRepository_CompleteOrder_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CompleteOrder'
+type OrderRepository_CompleteOrder_Call struct {
+	*mock.Call
+}
+
+// CompleteOrder is a helper method to define mock.On call
+//   - ctx context.Context
+//   - orderUuid string
+func (_e *OrderRepository_Expecter) CompleteOrder(ctx interface{}, orderUuid interface{}) *OrderRepository_CompleteOrder_Call {
+	return &OrderRepository_CompleteOrder_Call{Call: _e.mock.On("CompleteOrder", ctx, orderUuid)}
+}
+
+func (_c *OrderRepository_CompleteOrder_Call) Run(run func(ctx context.Context, orderUuid string)) *OrderRepository_CompleteOrder_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *OrderRepository_CompleteOrder_Call) Return(_a0 error) *OrderRepository_CompleteOrder_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *OrderRepository_CompleteOrder_Call) RunAndReturn(run func(context.Context, string) error) *OrderRepository_CompleteOrder_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateOrder provides a mock function with given fields: ctx, order
 func (_m *OrderRepository) CreateOrder(ctx context.Context, order model.Order) error {
 	ret := _m.Called(ctx, order)

@@ -223,6 +223,7 @@ components:
         - PENDING_PAYMENT
         - PAID
         - CANCELLED
+        - COMPLETED
     order_dto:
       type: object
       description: Полное представление заказа

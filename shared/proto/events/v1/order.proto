@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package events.v1;
+
+option go_package = "github.com/massodo1993/service-example/shared/pkg/proto/events/v1;eventsv1";
+
+// OrderPaid — заказ оплачен (публикует OrderService).
+message OrderPaid {
+  string event_uuid = 1; // Уникальный идентификатор события (идемпотентность)
+  string order_uuid = 2; // Идентификатор оплаченного заказа
+  string user_uuid = 3; // Идентификатор пользователя
+  string payment_method = 4; // Способ оплаты (строкой)
+  string transaction_uuid = 5; // Идентификатор транзакции
+}
+
+// ShipAssembled — корабль собран (публикует AssemblyService).
+message ShipAssembled {
+  string event_uuid = 1; // Уникальный идентификатор события (идемпотентность)
+  string order_uuid = 2; // Идентификатор собранного заказа
+  string user_uuid = 3; // Идентификатор пользователя
+  int64 build_time_sec = 4; // Время сборки в секундах
+}

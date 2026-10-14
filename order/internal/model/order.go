@@ -9,6 +9,7 @@ const (
 	STATUS_PENDING_PAYMENT
 	STATUS_PAID
 	STATUS_CANCELLED
+	STATUS_COMPLETED
 )
 
 func (s Status) String() string {
@@ -21,6 +22,8 @@ func (s Status) String() string {
 		return "PAID"
 	case STATUS_CANCELLED:
 		return "CANCELLED"
+	case STATUS_COMPLETED:
+		return "COMPLETED"
 	default:
 		return "UNKNOWN"
 	}

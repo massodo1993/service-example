@@ -26,3 +26,12 @@ packages:
   github.com/massodo1993/service-example/payment/internal/config:
     config:
       include-regex: ".*Config"
+  github.com/massodo1993/service-example/order/internal/service:
+    config:
+      include-regex: ".*ProducerService"
+  github.com/massodo1993/service-example/assembly/internal/config:
+    config:
+      include-regex: ".*Config"
+  github.com/massodo1993/service-example/notification/internal/config:
+    config:
+      include-regex: ".*Config"

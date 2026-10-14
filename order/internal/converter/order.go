@@ -35,6 +35,8 @@ func ToOrderStatus(status model.Status) orderV1.OrderStatus {
 		return orderV1.OrderStatusPAID
 	case model.STATUS_CANCELLED:
 		return orderV1.OrderStatusCANCELLED
+	case model.STATUS_COMPLETED:
+		return orderV1.OrderStatusCOMPLETED
 	default:
 		return orderV1.OrderStatusPENDINGPAYMENT
 	}

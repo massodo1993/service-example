@@ -11,4 +11,5 @@ type OrderRepository interface {
 	CreateOrder(ctx context.Context, order model.Order) error
 	PayOrder(ctx context.Context, orderUuid, transactionUuid string, paymentMethod model.PaymentMethod) error
 	CancelOrder(ctx context.Context, orderUuid string) error
+	CompleteOrder(ctx context.Context, orderUuid string) error
 }

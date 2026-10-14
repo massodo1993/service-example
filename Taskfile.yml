@@ -40,7 +40,7 @@ vars:
   COVERAGE_FILE: total.out
 
   MODULES: assembly inventory order payment platform iam notification
-  SERVICES: core,inventory,order,payment
+  SERVICES: core,assembly,inventory,order,payment,notification
 
 tasks:
   install-formatters:
@@ -487,7 +487,7 @@ tasks:
 
         echo
         echo "📝 Тест 4: Создание заказа (REST API)"
-        ORDER_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders" \
+        ORDER_RESPONSE=$(curl -s -X POST "http://localhost:8085/api/v1/orders" \
           -H "Content-Type: application/json" \
           -d "{\"user_uuid\":\"$USER_UUID\",\"part_uuids\":[\"$PART_UUID\"]}")
 
@@ -511,7 +511,7 @@ tasks:
 
         echo
         echo "📊 Тест 5: Проверка начального статуса заказа (должен быть PENDING_PAYMENT)"
-        ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER_UUID")
+        ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8085/api/v1/orders/$ORDER_UUID")
 
         if [[ -z "$ORDER_INFO_RESPONSE" || "$ORDER_INFO_RESPONSE" == *"error"* ]]; then
           echo "❌ Не удалось получить информацию о заказе."
@@ -539,7 +539,7 @@ tasks:
 
         echo
         echo "💰 Тест 6: Оплата заказа (REST API)"
-        PAY_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders/$ORDER_UUID/pay" \
+        PAY_RESPONSE=$(curl -s -X POST "http://localhost:8085/api/v1/orders/$ORDER_UUID/pay" \
           -H "Content-Type: application/json" \
           -d "{\"payment_method\":\"CARD\"}")
 
@@ -552,7 +552,7 @@ tasks:
 
         echo
         echo "📊 Тест 7: Проверка статуса после оплаты (должен быть PAID)"
-        ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER_UUID")
+        ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8085/api/v1/orders/$ORDER_UUID")
 
         # Извлекаем статус заказа
         ORDER_STATUS=$(echo $ORDER_INFO_RESPONSE | grep -o '"status":"[^"]*' | cut -d'"' -f4)
@@ -561,15 +561,34 @@ tasks:
         fi
 
         # Проверяем, что статус стал PAID
-        if [[ "$ORDER_STATUS" != *"PAID"* && "$ORDER_STATUS" != *"ASSEMBLED"* ]]; then
-          echo "❌ Неверный статус заказа после оплаты. Ожидался PAID или ASSEMBLED, получен: $ORDER_STATUS"
+        if [[ "$ORDER_STATUS" != *"PAID"* && "$ORDER_STATUS" != *"COMPLETED"* ]]; then
+          echo "❌ Неверный статус заказа после оплаты. Ожидался PAID или COMPLETED, получен: $ORDER_STATUS"
           exit 1
         fi
         echo "✅ Статус заказа после оплаты: $ORDER_STATUS"
 
+        # Если статус PAID, ждем сборку (AssemblyService собирает до 10 секунд)
+        if [[ "$ORDER_STATUS" == *"PAID"* ]]; then
+          echo "Ожидаем сборку заказа (11 секунд)..."
+          sleep 11
+
+          ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8085/api/v1/orders/$ORDER_UUID")
+          ORDER_STATUS=$(echo $ORDER_INFO_RESPONSE | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+          if [ -z "$ORDER_STATUS" ]; then
+            ORDER_STATUS=$(echo $ORDER_INFO_RESPONSE | grep -o '"status": "[^"]*' | cut -d'"' -f4)
+          fi
+
+          if [[ "$ORDER_STATUS" != *"COMPLETED"* ]]; then
+            echo "❌ Статус заказа не изменился на COMPLETED после ожидания. Текущий статус: $ORDER_STATUS"
+            exit 1
+          fi
+
+          echo "✅ Статус заказа после ожидания сборки: $ORDER_STATUS (ожидали COMPLETED)"
+        fi
+
         echo
         echo "📝 Тест 8: Создание второго заказа для отмены (REST API)"
-        ORDER2_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders" \
+        ORDER2_RESPONSE=$(curl -s -X POST "http://localhost:8085/api/v1/orders" \
           -H "Content-Type: application/json" \
           -d "{\"user_uuid\":\"$USER_UUID\",\"part_uuids\":[\"$PART_UUID\"]}")
 
@@ -592,7 +611,7 @@ tasks:
         echo "✅ Успешно создан второй заказ с UUID: $ORDER2_UUID"
 
         # Проверяем его начальный статус
-        ORDER2_INFO=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER2_UUID")
+        ORDER2_INFO=$(curl -s -X GET "http://localhost:8085/api/v1/orders/$ORDER2_UUID")
         ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status":"[^"]*' | cut -d'"' -f4)
         if [ -z "$ORDER2_STATUS" ]; then
           ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status": "[^"]*' | cut -d'"' -f4)
@@ -609,11 +628,11 @@ tasks:
         echo "Ожидаем 2 секунды перед отменой..."
         sleep 2
 
-        curl -s -X POST "http://localhost:8080/api/v1/orders/$ORDER2_UUID/cancel"
+        curl -s -X POST "http://localhost:8085/api/v1/orders/$ORDER2_UUID/cancel"
 
         echo "Проверяем статус после отмены..."
         
-        ORDER2_INFO=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER2_UUID")
+        ORDER2_INFO=$(curl -s -X GET "http://localhost:8085/api/v1/orders/$ORDER2_UUID")
         ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status":"[^"]*' | cut -d'"' -f4)
         if [ -z "$ORDER2_STATUS" ]; then
           ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status": "[^"]*' | cut -d'"' -f4)

@@ -3,6 +3,7 @@ package order
 import (
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/massodo1993/service-example/order/internal/model"
 )
@@ -20,6 +21,9 @@ func (s *ServiceSuite) TestPayOrderSuccess() {
 	s.orderRepository.On("GetOrderByUuid", s.ctx, orderUUID.String()).Return(order, nil)
 	s.paymentClient.On("PayOrder", s.ctx, orderUUID, userUUID, paymentMethod).Return(transactionUUID, nil)
 	s.orderRepository.On("PayOrder", s.ctx, orderUUID.String(), transactionUUID.String(), paymentMethod).Return(nil)
+	s.orderProducer.On("ProduceOrderPaid", s.ctx, mock.MatchedBy(func(e model.OrderPaidEvent) bool {
+		return e.OrderUUID == orderUUID && e.UserUUID == userUUID && e.TransactionUUID == transactionUUID && e.PaymentMethod == "CARD"
+	})).Return(nil)
 
 	got, err := s.service.PayOrder(s.ctx, orderUUID, paymentMethod)
 	s.Require().NoError(err)

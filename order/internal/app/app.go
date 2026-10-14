@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"go.uber.org/zap"
 
 	"github.com/massodo1993/service-example/order/internal/api/health"
 	"github.com/massodo1993/service-example/order/internal/config"
@@ -36,7 +37,31 @@ func New(ctx context.Context) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
-	return a.runHTTPServer(ctx)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 2)
+
+	go func() {
+		if err := a.runConsumer(ctx); err != nil {
+			errCh <- fmt.Errorf("консьюмер завершился с ошибкой: %w", err)
+		}
+	}()
+
+	go func() {
+		if err := a.runHTTPServer(ctx); err != nil {
+			errCh <- fmt.Errorf("http-сервер завершился с ошибкой: %w", err)
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		logger.Info(ctx, "получен сигнал завершения")
+		return nil
+	case err := <-errCh:
+		logger.Error(ctx, "компонент завершился с ошибкой, останавливаем приложение", zap.Error(err))
+		return err
+	}
 }
 
 func (a *App) initDeps(ctx context.Context) error {
@@ -101,7 +126,7 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 }
 
 func (a *App) runHTTPServer(ctx context.Context) error {
-	logger.Info(ctx, fmt.Sprintf("HTTP order server listening on %s", config.AppConfig().OrderHTTP.Address()))
+	logger.Info(ctx, fmt.Sprintf("HTTP-сервер order слушает на %s", config.AppConfig().OrderHTTP.Address()))
 
 	err := a.httpServer.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -109,4 +134,10 @@ func (a *App) runHTTPServer(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (a *App) runConsumer(ctx context.Context) error {
+	logger.Info(ctx, "Kafka-консьюмер ShipAssembled запущен")
+
+	return a.diContainer.ConsumerService(ctx).RunConsumer(ctx)
 }
