@@ -35,3 +35,9 @@ packages:
   github.com/massodo1993/service-example/notification/internal/config:
     config:
       include-regex: ".*Config"
+  github.com/massodo1993/service-example/iam/internal/repository:
+    config:
+      include-regex: ".*Repository"
+  github.com/massodo1993/service-example/iam/internal/config:
+    config:
+      include-regex: ".*Config"

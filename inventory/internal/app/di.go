@@ -8,6 +8,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	inventoryv1API "github.com/massodo1993/service-example/inventory/internal/api/part/v1"
 	"github.com/massodo1993/service-example/inventory/internal/config"
@@ -16,6 +18,8 @@ import (
 	"github.com/massodo1993/service-example/inventory/internal/service"
 	partService "github.com/massodo1993/service-example/inventory/internal/service/part"
 	"github.com/massodo1993/service-example/platform/closer"
+	grpcAuth "github.com/massodo1993/service-example/platform/pkg/middleware/grpc"
+	authv1 "github.com/massodo1993/service-example/shared/pkg/proto/auth/v1"
 	inventoryv1 "github.com/massodo1993/service-example/shared/pkg/proto/inventory/v1"
 )
 
@@ -25,6 +29,10 @@ type diContainer struct {
 	partRepositroy repository.PartRepository
 	mongoDBClient  *mongo.Client
 	mongoDBHandle  *mongo.Database
+
+	iamConn         *grpc.ClientConn
+	iamClient       authv1.AuthServiceClient
+	authInterceptor *grpcAuth.AuthInterceptor
 }
 
 func NewDiContainer() *diContainer {
@@ -92,4 +100,40 @@ func (d *diContainer) MongoDBHandle(ctx context.Context) *mongo.Database {
 	}
 
 	return d.mongoDBHandle
+}
+
+func (d *diContainer) AuthInterceptor(ctx context.Context) *grpcAuth.AuthInterceptor {
+	if d.authInterceptor == nil {
+		d.authInterceptor = grpcAuth.NewAuthInterceptor(d.IamClient(ctx))
+	}
+
+	return d.authInterceptor
+}
+
+func (d *diContainer) IamClient(ctx context.Context) authv1.AuthServiceClient {
+	if d.iamClient == nil {
+		d.iamClient = authv1.NewAuthServiceClient(d.IamConn(ctx))
+	}
+
+	return d.iamClient
+}
+
+func (d *diContainer) IamConn(_ context.Context) *grpc.ClientConn {
+	if d.iamConn == nil {
+		conn, err := grpc.NewClient(
+			config.AppConfig().IamGRPC.Address(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			panic(fmt.Sprintf("failed to connect to iam: %s\n", err.Error()))
+		}
+
+		closer.AddNamed("iam grpc connection", func(ctx context.Context) error {
+			return conn.Close()
+		})
+
+		d.iamConn = conn
+	}
+
+	return d.iamConn
 }

@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package auth.v1;
+
+import "common/v1/user.proto";
+
+option go_package = "github.com/massodo1993/service-example/shared/pkg/proto/auth/v1;authv1";
+
+// AuthService — аутентификация и проверка сессий.
+service AuthService {
+  // Login создаёт сессию по логину и паролю.
+  rpc Login(LoginRequest) returns (LoginResponse);
+  // Whoami возвращает пользователя по сессии.
+  rpc Whoami(WhoamiRequest) returns (WhoamiResponse);
+}
+
+message LoginRequest {
+  string login = 1; // Логин пользователя
+  string password = 2; // Пароль пользователя
+}
+
+message LoginResponse {
+  string session_uuid = 1; // Идентификатор сессии
+}
+
+message WhoamiRequest {
+  string session_uuid = 1; // Идентификатор сессии
+}
+
+message WhoamiResponse {
+  common.v1.User user = 1; // Пользователь, которому принадлежит сессия
+}

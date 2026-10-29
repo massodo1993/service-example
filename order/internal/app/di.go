@@ -29,9 +29,11 @@ import (
 	wrappedKafka "github.com/massodo1993/service-example/platform/pkg/kafka"
 	wrappedKafkaConsumer "github.com/massodo1993/service-example/platform/pkg/kafka/consumer"
 	wrappedKafkaProducer "github.com/massodo1993/service-example/platform/pkg/kafka/producer"
+	httpAuth "github.com/massodo1993/service-example/platform/pkg/middleware/http"
 	kafkaMiddleware "github.com/massodo1993/service-example/platform/pkg/middleware/kafka"
 	"github.com/massodo1993/service-example/platform/pkg/migrator/pg"
 	orderV1 "github.com/massodo1993/service-example/shared/pkg/openapi/order/v1"
+	authv1 "github.com/massodo1993/service-example/shared/pkg/proto/auth/v1"
 	inventoryV1 "github.com/massodo1993/service-example/shared/pkg/proto/inventory/v1"
 	paymentV1 "github.com/massodo1993/service-example/shared/pkg/proto/payment/v1"
 )
@@ -48,6 +50,10 @@ type diContainer struct {
 
 	paymentConn   *grpc.ClientConn
 	paymentClient client.PaymentClient
+
+	iamConn        *grpc.ClientConn
+	iamClient      authv1.AuthServiceClient
+	authMiddleware *httpAuth.AuthMiddleware
 
 	orderProducerService service.OrderProducerService
 	consumerService      service.ConsumerService
@@ -273,4 +279,40 @@ func (d *diContainer) OrderPaidProducer() wrappedKafka.Producer {
 	}
 
 	return d.orderPaidProducer
+}
+
+func (d *diContainer) AuthMiddleware(ctx context.Context) *httpAuth.AuthMiddleware {
+	if d.authMiddleware == nil {
+		d.authMiddleware = httpAuth.NewAuthMiddleware(d.IamClient(ctx))
+	}
+
+	return d.authMiddleware
+}
+
+func (d *diContainer) IamClient(ctx context.Context) authv1.AuthServiceClient {
+	if d.iamClient == nil {
+		d.iamClient = authv1.NewAuthServiceClient(d.IamConn(ctx))
+	}
+
+	return d.iamClient
+}
+
+func (d *diContainer) IamConn(_ context.Context) *grpc.ClientConn {
+	if d.iamConn == nil {
+		conn, err := grpc.NewClient(
+			config.AppConfig().IamGRPC.Address(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			panic(fmt.Sprintf("failed to connect to iam: %s\n", err.Error()))
+		}
+
+		closer.AddNamed("iam grpc connection", func(ctx context.Context) error {
+			return conn.Close()
+		})
+
+		d.iamConn = conn
+	}
+
+	return d.iamConn
 }

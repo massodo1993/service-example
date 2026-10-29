@@ -25,6 +25,10 @@ type InventoryGRPCConfig interface {
 	Address() string
 }
 
+type IamGRPCConfig interface {
+	Address() string
+}
+
 type PaymentGRPCConfig interface {
 	Address() string
 }

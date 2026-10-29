@@ -110,7 +110,10 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Timeout(handlerTimeout))
 	router.Get("/health", health.Handler)
-	router.Mount("/", orderServer)
+	router.Group(func(r chi.Router) {
+		r.Use(a.diContainer.AuthMiddleware(ctx).Handle)
+		r.Mount("/", orderServer)
+	})
 
 	a.httpServer = &http.Server{
 		Addr:              config.AppConfig().OrderHTTP.Address(),

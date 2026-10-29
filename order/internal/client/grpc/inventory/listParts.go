@@ -8,6 +8,7 @@ import (
 
 	"github.com/massodo1993/service-example/order/internal/client/converter"
 	"github.com/massodo1993/service-example/order/internal/model"
+	grpcAuth "github.com/massodo1993/service-example/platform/pkg/middleware/grpc"
 	inventoryV1 "github.com/massodo1993/service-example/shared/pkg/proto/inventory/v1"
 )
 
@@ -16,6 +17,9 @@ func (c *client) ListParts(ctx context.Context, partsUUIDs []uuid.UUID) ([]model
 	for _, partUUID := range partsUUIDs {
 		uuids = append(uuids, partUUID.String())
 	}
+
+	// Пробрасываем сессию из входящего запроса в исходящие gRPC metadata.
+	ctx = grpcAuth.ForwardSessionUUIDToGRPC(ctx)
 
 	response, err := c.generatedClient.ListParts(ctx, &inventoryV1.ListPartsRequest{
 		Filter: &inventoryV1.PartsFilter{

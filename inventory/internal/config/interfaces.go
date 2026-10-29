@@ -1,5 +1,9 @@
 package config
 
+type IamGRPCConfig interface {
+	Address() string
+}
+
 type LoggerConfig interface {
 	Level() string
 	AsJson() bool
